@@ -1,27 +1,24 @@
 #region processminingstuff
 import csv
-import struct
+
 from datetime import date, datetime
 import pm4py
-import asyncua
+
 
 import pandas as pd
 #endregion
 import sys
-from PySide2.QtWidgets import QLabel,QComboBox,QMessageBox,QShortcut,QFileDialog,QDialog,QProgressDialog,QGraphicsEllipseItem,QGraphicsLineItem,QAbstractItemView,QSplitter, QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QSizePolicy,QPushButton,QGridLayout
+from PySide2.QtWidgets import QComboBox,QMessageBox,QShortcut,QFileDialog,QDialog,QProgressDialog,QAbstractItemView,QSplitter, QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QGraphicsView, QGraphicsScene, QSizePolicy,QPushButton,QGridLayout
 from PySide2.QtGui import QPainter,QKeySequence
-from PySide2.QtCore import Qt, QSize,QTimer,QPointF,QPoint
+from PySide2.QtCore import Qt, QSize,QTimer
 
 from PySide2.QtWidgets import QHeaderView
-from PySide2.QtGui import QPalette, QColor,QPen,QBrush,QFont,QPainter,QPixmap,QCloseEvent
-import argparse
-import os
+from PySide2.QtGui import QPalette, QColor,QPen,QBrush,QFont,QPainter,QCloseEvent
+
 import random
 import math
 from scapy.all import *
 import utils
-from time import sleep
-import pickle
 import utils
 import docker
 # # CLI Arguments
@@ -60,12 +57,7 @@ class GUI(QWidget):
 
 
 
-    # def closeEvent(self,event):
-    #     try:
-    #         utils.kill_containers(self.client)
-    #     except:
-    #         pass
-    #     event.accept()
+
 
     def closeEvent(self,event: QCloseEvent):
         try:
@@ -76,16 +68,13 @@ class GUI(QWidget):
         event.accept()
 
     def initUI(self):
-        # Create the drawing area
 
-  # Create the buttons
         self.import_button = QPushButton('Import pcap', self)
         self.traffic_button = QPushButton('Analyze Traffic', self)
         self.simulation_button = QPushButton('Start Simulation', self)
         self.process_button = QPushButton('Mine Processes', self)
         self.docker_button = QPushButton('Create Docker', self)
 
-        # Create the drawing area
         self.drawing_area = QGraphicsView(self)
         self.drawing_area.setRenderHint(QPainter.Antialiasing)
         self.drawing_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -94,7 +83,6 @@ class GUI(QWidget):
         self.drawing_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.drawing_area.setMinimumSize(QSize(800, 100))  # modified height
 
-        # Create the table
         self.table = QTableWidget(self)
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(['No.','Time', 'Source', 'Destination', 'Length', 'Exec Time'])
@@ -112,7 +100,6 @@ class GUI(QWidget):
         self.combo_box_1.addItems(["Process Tree","BPMN","Petri Net (Alpha)","Petri Net (Alpha Plus)","Petri Net (Heuristics)","Petri Net (Inductive)","Dfg","Heuristic Net"])
         self.combo_box_2.addItems(["TCP","UDP"])
 
-        # Use a grid layout to arrange the buttons
         layout = QGridLayout(self)
         layout.addWidget(self.import_button, 0, 0)
         layout.addWidget(self.traffic_button, 0, 1)
@@ -122,11 +109,10 @@ class GUI(QWidget):
         layout.addWidget(self.combo_box_1, 0, 4)
         layout.addWidget(self.combo_box_2, 0, 5)
 
-        # Use a QSplitter to arrange the drawing area and the table side by side
         splitter = QSplitter(self)
         splitter.addWidget(self.drawing_area)
         splitter.addWidget(self.table)
-        splitter.setSizes([700, 300])  # set the sizes of the two widgets to 70:30 ratio
+        splitter.setSizes([700, 300])  
 
         # Add the splitter widget to the layout
         layout.addWidget(splitter, 1, 0, 1, 7)  # span over 7 columns
@@ -134,9 +120,7 @@ class GUI(QWidget):
         self.setLayout(layout)
         if(self.packets != None):
             self.draw_network()
-        # # timer to call update every 1000 ms
-        # self.timer = QTimer(self)
-        # self.timer.timeout.connect(self.updateNetwork)
+
         self.update_buttons()
         self.setGeometry(200, 200, 1280, 720)
         self.setWindowTitle('Modeli')
@@ -174,9 +158,6 @@ class GUI(QWidget):
             # remove all rows from table
             self.table.setRowCount(0)
             
-            # for packet in packets:
-            #     print(packet.command())
-
 
     def docker_clicked(self):
         client = None
@@ -341,11 +322,7 @@ class GUI(QWidget):
                 pass
             # Extract the relevant information from the packet
             today =  date.today().strftime("%Y-%m-%d %H:%M:%S")
-            #print(today)
-            # timestamptoday = time.mktime(datetime.strptime(today, "%y-%m-%d").timetuple())
-            # timeNow = pd.to_datetime(float(packet.time))
             utcTime = datetime.utcfromtimestamp(float(packet.time)).strftime('%Y-%m-%d %H:%M:%S')
-            #print(timestamptoday)
             event = {
                 "case ID" : "1",
                 "timestamp": utcTime,
@@ -356,8 +333,6 @@ class GUI(QWidget):
             }
             # Add the event to the event log
             event_log.append(event)
-            # other evenlog hardcoded
-            # check if packet has payload
 
 
 
@@ -374,7 +349,6 @@ class GUI(QWidget):
         df = pd.read_csv("eventlog.csv",parse_dates = ["date","timestamp"],date_parser = dateparse,dtype={"case ID":str})
         # print all column types of df
         print(df.dtypes)
-        #df = pm4py.format_dataframe(df,)
         if(proc_min == "BPMN"):
             processTree = pm4py.discover_process_tree_inductive(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
             bpmn_model = pm4py.convert_to_bpmn(processTree)
@@ -401,25 +375,7 @@ class GUI(QWidget):
             map = pm4py.discover_heuristics_net(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
             pm4py.view_heuristics_net(map)
 
-        # processTree = pm4py.discover_process_tree_inductive(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_process_tree(processTree)
-        # bpmn_model = pm4py.convert_to_bpmn(processTree)
-        # pm4py.view_bpmn(bpmn_model)
-        # net,im,fm = pm4py.discover_petri_net_alpha(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_petri_net(net,im,fm)
-        # net,im,fm = pm4py.discover_petri_net_alpha_plus(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_petri_net(net,im,fm)
-        # net,im,fm = pm4py.discover_petri_net_heuristics(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_petri_net(net,im,fm)
-        # net,im,fm = pm4py.discover_petri_net_inductive(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_petri_net(net,im,fm)
-
-
-        # dfg, start_activities, end_activities = pm4py.discover_dfg_typed(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_dfg(dfg, start_activities, end_activities)
-        # map = pm4py.discover_heuristics_net(df,activity_key="action",timestamp_key="timestamp",case_id_key = "case ID")
-        # pm4py.view_heuristics_net(map)
-
+      
     #endregion
 
     def populate_table(self,starttime,pack):
@@ -455,7 +411,6 @@ class GUI(QWidget):
         self.nodes = dict()
         for node in self.keylist:
             print("Key: " + str(node))
-            # add node to the dict, format is {str(node): Node(label=str(node))}
             self.nodes[str(node)] = Node(label=str(node))
 
         self.edgelist = set()
@@ -483,7 +438,6 @@ class GUI(QWidget):
         self.radius = 20
         for edge in self.edgelist:
             line = self.drawing_area.scene().addLine(self.nodes[edge[0]].x, self.nodes[edge[0]].y, self.nodes[edge[1]].x, self.nodes[edge[1]].y,pen=QPen(QColor(255, 255, 255),2))
-            # self.nodes[edge[0]].setItem(line)
             self.edge_to_line[edge] = line
 
         for node in self.nodes.values():
@@ -498,17 +452,13 @@ class GUI(QWidget):
 
     # find positions of the nodes that are the best
     def fruchterman_reingold(self, width, height):
-    # Set the initial positions of the nodes randomly
-        # random.seed(1309)
         for node in self.nodes.values():
 
             node.x = random.randint(0, width)
             node.y = random.randint(0, height)
 
-        # Set the temperature, which controls the amount of displacement applied to the nodes
         temperature = width / 10
 
-        # Set the number of iterations to run the algorithm
         num_iterations = 1000
 
         attractive_mult = 2
@@ -520,11 +470,9 @@ class GUI(QWidget):
         progress_dialog.setWindowModality(Qt.WindowModal)  # makes the dialog modal
         progress_dialog.setMinimumDuration(0)
 
-        # Run the algorithm for the specified number of iterations
         for i in range(num_iterations):
             progress_dialog.setValue(i)  # sets the progress value (0-100)
             progress_dialog.setLabelText(f'Processing {i}/100')  # sets the text shown
-            # Calculate the forces acting on each node
             for node in self.nodes.values():
                 node.dx = 0
                 node.dy = 0
@@ -552,16 +500,11 @@ class GUI(QWidget):
                 node2.dx += dx / distance * force
                 node2.dy += dy / distance * force
 
-            # Displace the nodes based on the forces acting on them
             for node in self.nodes.values():
-                # Cool down the temperature as the algorithm progresses
                 temperature *= 0.99
-                # Calculate the displacement of the node
                 dx = math.sqrt(node.dx**2 + node.dy**2) / temperature
-                # Update the position of the node
                 node.x += node.dx / dx if dx > 0 else 0
                 node.y += node.dy / dx if dx > 0 else 0
-                # Keep the node within the bounds of the graphics scene
                 node.x = max(0, min(node.x, width))
                 node.y = max(0, min(node.y, height))
             if progress_dialog.wasCanceled():
@@ -584,40 +527,6 @@ class Node:
     def getItem(self): # just to be save
         return self.item
 
-# class SelectionScreen(QWidget):
-
-#     process = str()
-#     protocol = str()
-#     def __init__(self):
-#         super().__init__()
-#         self.initUI()
-
-#     def initUI(self):
-#         self.combo_box_1 = QComboBox()
-#         self.combo_box_2 = QComboBox()
-
-#         self.combo_box_1.addItems(["Process Tree","BPMN","Petri Net(Alpha)","Petri Net(Alpha Plus)","Petri Net (Heuristics)","Petri Net (Inductive)","Dfg","Heuristic Net)"])
-#         self.combo_box_2.addItems(["TCP","UDP"])
-
-#         layout = QVBoxLayout()
-#         layout.addWidget(QLabel("Process Mining Algorithm"))
-#         layout.addWidget(self.combo_box_1)
-#         layout.addWidget(QLabel("Network Protocol"))
-#         layout.addWidget(self.combo_box_2)
-#         submit_button = QPushButton("Submit")
-#         submit_button.clicked.connect(self.submit)
-#         layout.addWidget(submit_button)
-#         self.setLayout(layout)
-
-#         self.setGeometry(300,300,200,400)
-
-
-#     def submit(self):
-#         self.combo_1_selection = self.combo_1.currentText()
-#         self.combo_2_selection = self.combo_2.currentText()
-
-#         # Close the window
-#         self.close()
 
 
 class PerformanceMetricsDialog(QDialog):

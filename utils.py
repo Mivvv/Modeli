@@ -16,6 +16,14 @@ from PySide2.QtGui import QPalette, QColor
 from PySide2.QtCore import Qt, QSize
 
 #region util
+# get unique id for secondary network
+def get_unique_ip(dict_source):
+    containerID = "240.0.0."
+    for i in range(99,255):
+        if(containerID + str(i) not in dict_source):
+            return containerID + str(i)
+    
+    return "-1"
 
 def read_pcap(pcap_file:str):
     # Read in the pcap file and return a list of packets
@@ -53,6 +61,7 @@ def get_path():
     path = "/".join(path)
     return path
 
+#copy to and from container
 def copy_to(src, dst, client):
     name, dst = dst.split(':')
     container = client.containers.get(name)
@@ -87,7 +96,7 @@ def copy_from(save,savepath,location,client,firstKey):
             if("json" not in savepath):
                 log("Successfully got the tcpdump file")
                 log("File can be found at:" + location + "/" + savepath)
-
+# test function to get any file from the container
 def copy_any_from(savename:str,save_path:str,filename:str,client:docker.DockerClient,container:str):
     trycount = 0
     return_value = 1
@@ -111,6 +120,7 @@ def get_subnet(packs):
             return ".".join(ip) + ".0/24"
     return 0
 
+# test function to get any file from the container
 def get_any_file(savename:str,save_path:str,filename:str,client:docker.DockerClient,container:str):
     #get archive attempt
     try:
@@ -189,7 +199,7 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
     server_dockerfile = "server.Dockerfile"
     server_tag = "server"
     server_subnet = "240.0.0.0/24" # subnet that SHOULD NEVER appear in a pcap file...officially...
-    server_name = "240.0.0.100"
+    server_name = get_unique_ip(dict_source)
     packets_filename = "packets.p"
     with open(ping_location + "/"+ packets_filename, 'wb') as f:
         pickle.dump(packets, f)
@@ -200,7 +210,6 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
     container = client.containers.run(server_tag, detach=True, network=secondary_network, name=server_name, tty=True, stdin_open=True, privileged  = True,command="tail -f /dev/null")
     container.exec_run("ip addr add " + server_name + "/24 dev eth0")
     container.exec_run("ip link set dev eth0 up")
-    # TODO: make sure server_name is unique
     for key in dict_source:
         client_container = client.containers.get(key)
         client_ip = server_name.split(".")[0:3]
@@ -208,8 +217,6 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
         client_ip = ".".join(client_ip)
         log("Client IP : " + client_ip)
         client.networks.get(secondary_network).connect(client_container,ipv4_address=client_ip)
-        # client_container.exec_run("ip addr add " + client_ip + "/24 dev eth1")
-        # client_container.exec_run("ip link set dev eth1 up")
         copy_to(ping_location + client_py, key + ":/usr/src/app/client.py", client)
         copy_to(ping_location + "/"+packets_filename, key + ":/usr/src/app/"+packets_filename, client)
     # now we have to wait for the network to be created
@@ -220,7 +227,7 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
 
   
     copy_to(ping_location + "/"+packets_filename, server_name + ":/usr/src/app/"+packets_filename, client)
-    container.exec_run("python3 -u server.py -i eth0 -f "+packets_filename + " -c " + str(max_range) + " -s 240.0.0.100",detach=True)
+    container.exec_run("python3 -u server.py -i eth0 -f "+packets_filename + " -c " + str(max_range) + " -s "+server_name,detach=True)
 
 def create_Network(netname, sub, client):
     # gateway should be 254 in the network

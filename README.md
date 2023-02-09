@@ -3,8 +3,12 @@
 This program takes a PCAP file and generates a network in docker and simulates the traffic.
 You can customize the program with the following arguments.
 
-# Arguments
+# Warnings
+Dont use this if you have other containers running. EVERY CONTAINER WILL BE CLOSED AND EVERY NETWORK WILL BE DELETED.
+Only tested with PCAPS where all traffic was already filted to tcp. If you want the smoothest experience please filter packets beforehand.
 
+# Arguments
+Bool like operators need a 1 or a 0 behind them.
 - p (pcap) -> path to tcpfile
 - d (docker) -> only make the network but nothing else
 - sp (savepath) -> path to savefile

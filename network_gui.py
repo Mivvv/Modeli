@@ -52,16 +52,7 @@ class MyWidget(QWidget):
         startShortcut = QShortcut(QKeySequence("R"), self)
         startShortcut.activated.connect(self.start_clicked)
 
-    # def closeEvent(self,event):
-    #     try:
-    #         utils.kill_containers(self.client)
-    #     except:
-    #         pass
-    #     event.accept()
-
     def initUI(self):
-        # Create the drawing area
-        
         self.drawing_area = QGraphicsView(self)
         self.drawing_area.setRenderHint(QPainter.Antialiasing)
         self.drawing_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -71,8 +62,7 @@ class MyWidget(QWidget):
         self.drawing_area.setMinimumSize(QSize(800, 0))
 
 
-      
-        # Create the table
+
         self.table = QTableWidget(self)
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(['No.','Time', 'Source', 'Destination', 'Length', 'Exec Time'])
@@ -82,7 +72,6 @@ class MyWidget(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # add scrollbars
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.table.setMinimumSize(QSize(480, 0))
@@ -96,7 +85,6 @@ class MyWidget(QWidget):
 
         self.setLayout(layout)
         self.draw_network()
-        # timer to call update every 1000 ms
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateNetwork)
         self.limiter = 100
@@ -123,7 +111,6 @@ class MyWidget(QWidget):
         self.nodes = dict()
         for node in self.keylist:
             print("Key: " + str(node))
-            # add node to the dict, format is {str(node): Node(label=str(node))}
             self.nodes[str(node)] = Node(label=str(node))
 
         self.edgelist = set()
@@ -161,19 +148,15 @@ class MyWidget(QWidget):
             self.nodes[node.label].setItem(ellipse)
         
 
-    # find positions of the nodes that are the best
     def fruchterman_reingold(self, width, height):
-    # Set the initial positions of the nodes randomly
         random.seed(1309)
         for node in self.nodes.values():
 
             node.x = random.randint(0, width)
             node.y = random.randint(0, height)
 
-        # Set the temperature, which controls the amount of displacement applied to the nodes
         temperature = width / 10
 
-        # Set the number of iterations to run the algorithm
         num_iterations = 1000
 
         attractive_mult = 2
@@ -183,7 +166,6 @@ class MyWidget(QWidget):
         attractive_force = lambda distance: distance**2 / (width/attractive_mult) if distance > 0 else 0
         
 
-        # Run the algorithm for the specified number of iterations
         for i in range(num_iterations):
             # Calculate the forces acting on each node
             for node in self.nodes.values():
@@ -213,9 +195,7 @@ class MyWidget(QWidget):
                 node2.dx += dx / distance * force
                 node2.dy += dy / distance * force
 
-            # Displace the nodes based on the forces acting on them
             for node in self.nodes.values():
-                # Cool down the temperature as the algorithm progresses
                 temperature *= 0.99
                 # Calculate the displacement of the node
                 dx = math.sqrt(node.dx**2 + node.dy**2) / temperature
@@ -231,13 +211,10 @@ class MyWidget(QWidget):
         if(self.startTimining == 0):
             self.startTimining = time.time()
         self.savename = self.args.savepath if self.args.savepath != "" else "save.pcap"
-        #print(self.savename)
         self.packets = self.packets if self.args.filter == "" else utils.filter_packets(self.packets,self.args.filter)
         self.args.count = self.args.count if self.args.count > 0 else len(self.packets)
 
-        #!Debug
-        # self.args.count = 30
-        # self.args.dump = 1
+
         if(self.args.onlygui):
             self.onlygui()
         elif(self.args.mode == "tcpreplay"):
@@ -405,7 +382,7 @@ class MyWidget(QWidget):
         if(self.iniated_network == False):
             self.create_second_net()
         
-        pingContainer = "240.0.0.100"
+        pingContainer = utils.get_unique_ip(self.dict_source)
         firstKey = list(self.nodes.keys())[0]
         # now we read the logs from the ping container and get the information from there
         # we also have to somehow keep track of how many packets have been sent

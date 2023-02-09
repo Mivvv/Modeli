@@ -1,15 +1,11 @@
-# main idea is to make a second network and add all the containers to both
 from scapy.all import *
-from datetime import timezone
 from time import sleep
 import time
 import json
 import docker
 import pickle
 import tarfile
-import datetime
 import os
-import platform
 import argparse
 import network_gui
 import OnlyGui
@@ -17,14 +13,13 @@ import sys
 import utils
 from PySide2.QtWidgets import QApplication
 from PySide2.QtGui import QPalette, QColor
-from PySide2.QtCore import Qt, QSize
+from PySide2.QtCore import Qt
 
 
 
 #region init region
 def main():
 
-    # TODO: add a optimised flag (for tcpreplay and scapy)
     arg_parser = init_sys_args()
     args = arg_parser.parse_args()
 
@@ -48,18 +43,11 @@ def main():
     utils.create_containers(dict_source, client, netname,image_name,location)
     if(args.docker == 1):
         return
-    #!Debug
-    # args.mode = "tcpreplay"
-    # args.listoflists = 0
-    # args.gui = 0
-    # gui area, TODO: make a gui
     if(args.gui == 1):
         
         init_GUI(packets,dict_source,client,netname,location,args)
         
     
-    # send logic
-    #send_packets(packets, dict_source, client, netname,location)
     else:
         send_packets_args(packets,dict_source,client,netname,location,args)
 
@@ -156,13 +144,7 @@ def send_packets_args(packets, dict_source, client, netname,location,args):
     mode = args.mode
     packetsFiltered = packets if args.filter == "" else utils.filter_packets(packets,args.filter)
     maxRange = args.count if args.count > 0 else len(packetsFiltered)
-    # #!Debug
-    # save = True
-    # maxRange = 50
-  
-    # verbose = True
-    # args.listoflists = True
-    # #!Debug end
+
 
     utils.log("Sending packages with mode: " +mode)
 
@@ -176,11 +158,6 @@ def send_packets_args(packets, dict_source, client, netname,location,args):
 
     utils.kill_containers(client)
 
-    # for pack in packets:
-    #     wrpcap(filename="pack.pcap",pkt=pack)
-    #     copy_to(location+"/pack.pcap", str(pack["IP"].src)+":/usr/src/app/packets.p", client)
-    #     cont = client.containers.get(pack["IP"].src)
-    #     print(cont.exec_run("tcpreplay -i eth0 pack.pcap"))
 
 def send_packets_tcpreplay(packets, dict_source:dict, client,location,savename,save,maxRange,verbose,optimized=False):
     firstKey = str(list(dict_source.keys())[0])
@@ -290,7 +267,6 @@ def send_packets_scapy(packets, dict_source, client,location,savepath,save,maxRa
 
 #region ping functions
 def send_packets_scapy_ping(packets, dict_source, client,location,savepath,save,maxRange,verbose):
-    # okay here we have to do the whole "pingNetwork" logic that is already implemented in one of the folders in the repo
     # general idea:
     # 1. create a second network, one more container and connect every container to the second network
     # 2. start client.py in every container but the server
@@ -313,7 +289,9 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
     server_dockerfile = "server.Dockerfile"
     server_tag = "server"
     server_subnet = "240.0.0.0/24" # subnet that SHOULD NEVER appear in a pcap file...officially...
-    server_name = "240.0.0.100"
+    server_name = utils.get_unique_ip(dict_source)
+    if(server_name == "-1" or server_name == None or server_name == ""):
+        raise Exception("No valid IP found for second network")
     packets_filename = "packets.p"
     with open(ping_location + "/"+ packets_filename, 'wb') as f:
         pickle.dump(packets, f)
@@ -324,7 +302,6 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
     container = client.containers.run(server_tag, detach=True, network=secondary_network, name=server_name, tty=True, stdout = sys.stdout, stdin_open=True, privileged  = True,command="tail -f /dev/null")
     container.exec_run("ip addr add " + server_name + "/24 dev eth0")
     container.exec_run("ip link set dev eth0 up")
-    # TODO: make sure server_name is unique
     for key in dict_source:
         client_container = client.containers.get(key)
         client_ip = server_name.split(".")[0:3]
@@ -344,13 +321,8 @@ def create_second_network(client, ping_location,secondary_network,dict_source,pa
 
   
     utils.copy_to(ping_location + "/"+packets_filename, server_name + ":/usr/src/app/"+packets_filename, client)
-    answer = container.exec_run("python3 -u server.py -i eth0 -f "+packets_filename + " -c " + str(max_range) + " -s 240.0.0.100",stream = True,detach=True)
+    answer = container.exec_run("python3 -u server.py -i eth0 -f "+packets_filename + " -c " + str(max_range) + " -s "+ server_name,stream = True,detach=True)
 
-    # for line in answer.output:
-    #     print(line.decode("utf-8"),end="")
-
-    #print(answer)
-    #print_container_logs2(container,client,max_range,packets)
     print_container_logs(container,client,location,max_range)
 
 def print_container_logs(container,client,location,max_range):
@@ -399,7 +371,6 @@ def print_container_logs(container,client,location,max_range):
 
 #region util
 def get_tcpdump(savepath,location,client,container):
-    #get archive attempt
     try:
 
         stream,stats =  client.containers.get(container).get_archive("usr/src/app/" + savepath)
