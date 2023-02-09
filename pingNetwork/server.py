@@ -12,9 +12,6 @@ def main():
     args = init_args()
     os.system("touch log.txt")
     os.system("touch jsonLog.json")
-    # os.environ["PYTHONUNBUFFERED"] = "1"
-    # with open("log.txt", "w") as f:
-    #     f.write("I SET THE FUCKING ENV VARIABLE")
     results = args.parse_args()
     if(results.src == None):
         results.src = "240.0.0.100"

@@ -12,7 +12,6 @@ def init_args():
     parser = argparse.ArgumentParser(description='Ping a network')
     parser.add_argument("-f", "--file", help="File that has the packets", required=True)
     parser.add_argument("-i", "--interface", help="Interface to send packets")
-    #parser.add_argument("-s", "--src", help="Source IP address",required=True)
     return parser
 
 def write_log(content): # write to log file
@@ -30,7 +29,6 @@ def write_log(content): # write to log file
 
 def sniff_callback(pkt):
     # check if src is from 240.0.0.0/24
-    write_log("now here")
     try:
         if(pkt.haslayer("IP") == True and pkt["IP"].src.startswith("240.0.0.") == False):
             #write to log
@@ -41,11 +39,7 @@ def sniff_callback(pkt):
             write_log("No raw layer")
             return
         num = int(pkt.getlayer("Raw").load.decode("utf-8"))
-        # with open("log.txt", "a") as f:
-        #     f.write(str(num))
-        #     f.write("\n")
-        # #wrpcap("test.pcap", pkt_to_send)
-        #os.system("tcpreplay -i eth1 test.pcap")
+
         sendp(packets[num], iface="eth0")
         write_log("Sent :" + packets[num].summary())
         
